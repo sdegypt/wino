@@ -10,10 +10,15 @@ self.addEventListener("message", (event) => {
 });
 
 self.addEventListener('install', async (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE)
       .then((cache) => cache.add(offlineFallbackPage))
   );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
 });
 
 if (workbox.navigationPreload.isSupported()) {
@@ -26,9 +31,7 @@ self.addEventListener('fetch', (event) => {
       try {
         const preloadResp = await event.preloadResponse;
         if (preloadResp) return preloadResp;
-
-        const networkResp = await fetch(event.request);
-        return networkResp;
+        return await fetch(event.request);
       } catch (error) {
         const cache = await caches.open(CACHE);
         return await cache.match(offlineFallbackPage);
@@ -36,3 +39,9 @@ self.addEventListener('fetch', (event) => {
     })());
   }
 });
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});     
